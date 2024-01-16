@@ -10,7 +10,6 @@ from data import MyDataset
 
 
 def train(args, model, train_dataset, validation_dataset):
-    
     if torch.cuda.is_available():
         model = model.cuda()
     
@@ -35,10 +34,17 @@ def train(args, model, train_dataset, validation_dataset):
     
     # Resume training from checkpoint
     if args.resume_path is not None:
-        checkpoint = torch.load(args.resume_path, map_location=('cuda' if torch.cuda.is_available() else 'cpu'))
-        start_epoch = checkpoint['epoch']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        if torch.cuda.is_available():
+            checkpoint = torch.load(args.resume_path)
+            start_epoch = checkpoint['epoch']
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+        else:
+            checkpoint = torch.load(args.resume_path, map_location='cpu')
+            start_epoch = checkpoint['epoch']
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+        
     
         
     for epoch in range(start_epoch, args.epochs + start_epoch):
@@ -49,7 +55,7 @@ def train(args, model, train_dataset, validation_dataset):
         train_loss = 0
         for image,laplace in train_dataLoader:
             
-            if torch.cuda.is_available(): # if the gpu can be used for training
+            if torch.cuda.is_available():
                 image   = image.cuda()
                 laplace = laplace.cuda()
             
@@ -82,18 +88,19 @@ def train(args, model, train_dataset, validation_dataset):
                 
             validation_loss = validation_loss/len(validation_dataset)
         
-        # Print current loss and save dict
+        # Print current loss and save dict ever 100th epoch
+        # ------------------------
         if (epoch != 0 and epoch % 100 == 0) or (epoch == args.epochs + start_epoch - 1):
             print("epoch: ", epoch)
-            print("training Loss: ", train_loss)
-            print("Validation Loss: ", validation_loss)
+            print("training Loss: ", train_loss.item())
+            print("Validation Loss: ", validation_loss.item())
             
             state = {
                 'epoch'    : epoch,
                 'train_loss': train_loss,
                 'validation_loss': validation_loss,
                 'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict,
+                'optimizer': optimizer.state_dict(),
             }
             
             if not os.path.exists(args.model_path):
@@ -114,14 +121,14 @@ def main(args):
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_dir'    ,help='train data directory'                  ,dest='train_path'            ,type=str   ,default='train/')
-    parser.add_argument('--val_dir'      ,help='validation data directory'             ,dest='validation_path'       ,type=str   ,default='validation/')
-    parser.add_argument('--model_dir'    ,help='model directory'                       ,dest='model_path'            ,type=str   ,default='models/')
-    parser.add_argument('--resume_dir'   ,help='if resuming, set path to model weights',dest='resume_path'           ,type=str   ,default=None)
-    parser.add_argument('--train_batch'  ,help='train batch size'                      ,dest='train_batch_size'      ,type=int   ,default=1000)
-    parser.add_argument('--val_batch'    ,help='validation batch size'                 ,dest='validation_batch_size' ,type=int   ,default=20)
-    parser.add_argument('--epochs'       ,help='number of epochs to train for'         ,dest='epochs'                ,type=int   ,default=1000)
-    parser.add_argument('--learning_rate',help='learning rate'                         ,dest='learning_rate'         ,type=float ,default=1e-3)
+    parser.add_argument('--train_dir'    ,help='train data directory'               ,dest='train_path'            ,type=str   ,default='train/')
+    parser.add_argument('--val_dir'      ,help='validation data directory'          ,dest='validation_path'       ,type=str   ,default='validation/')
+    parser.add_argument('--model_dir'    ,help='model directory'                    ,dest='model_path'            ,type=str   ,default='models/')
+    parser.add_argument('--resume_dir'   ,help='if resuming, set path to checkpoint',dest='resume_path'           ,type=str   ,default=None)
+    parser.add_argument('--train_batch'  ,help='train batch size'                   ,dest='train_batch_size'      ,type=int   ,default=20)
+    parser.add_argument('--val_batch'    ,help='validation batch size'              ,dest='validation_batch_size' ,type=int   ,default=6)
+    parser.add_argument('--epochs'       ,help='number of epochs to train for'      ,dest='epochs'                ,type=int   ,default=10001)
+    parser.add_argument('--learning_rate',help='learning rate'                      ,dest='learning_rate'         ,type=float ,default=1e-3)
     args = parser.parse_args()
     
     main(args)

@@ -24,7 +24,8 @@ class MyDataset(torch.utils.data.Dataset):
     
     def __len__(self):
         return len(self.images_paths)
-    
+
+
 def get_dataset_from(path, in_colors=False):
     colorspace = (cv2.IMREAD_COLOR if in_colors else cv2.IMREAD_GRAYSCALE)
     
@@ -64,6 +65,8 @@ if __name__ == '__main__':
     # _ = get_dataset_from('validation/')
     
     teste = MyDataset('train')
-    print(teste.__len__())
-    teste.__getitem__(2)
-    
+    print("len test: ", teste.__len__())
+    print("getitem test...")
+    img_pair_verification = teste.__getitem__(2)
+    if img_pair_verification is not None:
+        print("Success")
